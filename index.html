@@ -1,193 +1,207 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Emotion Image Gallery</title>
-<script src="https://www.google.com/search?q=https://cdn.jsdelivr.net/npm/%40mediapipe/holistic/holistic.js"></script>
-<script src="https://www.google.com/search?q=https://cdn.jsdelivr.net/npm/%40mediapipe/camera_utils/camera_utils.js"></script>
-<script src="https://www.google.com/search?q=https://cdn.tailwindcss.com"></script>
-<style>
-body, html {
-margin: 0;
-padding: 0;
-width: 100%;
-height: 100%;
-overflow: hidden;
-background-color: #000;
-}
-#app-container {
-position: relative;
-width: 100vw;
-height: 100vh;
-background: #000;
-}
-video {
-display: none;
-}
-/* Two layers for cross-dissolve */
-.bg-layer {
-position: absolute;
-top: 0;
-left: 0;
-width: 100%;
-height: 100%;
-object-fit: cover;
-transition: opacity 2s ease-in-out;
-z-index: 1;
-}
-#layer-primary { opacity: 1; }
-#layer-secondary { opacity: 0; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion Reaction Gallery</title>
+    <!-- Core Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+        }
+        #app-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+        }
+        video {
+            display: none;
+        }
+        /* Cross-dissolve system */
+        .bg-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: opacity 2.5s ease-in-out;
+            z-index: 1;
+            opacity: 0;
+        }
+        .active-layer {
+            opacity: 1;
+            z-index: 2;
+        }
 
-    #emotion-overlay {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 10;
-        pointer-events: none;
-        text-shadow: 0 0 40px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.5);
-    }
-    .loading-overlay {
-        position: fixed;
-        inset: 0;
-        background: black;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        z-index: 100;
-        transition: opacity 0.8s;
-        color: white;
-    }
-</style>
-
-
+        #emotion-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            pointer-events: none;
+            text-shadow: 0 0 30px rgba(0,0,0,0.8), 0 0 10px rgba(0,0,0,0.5);
+        }
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: black;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            transition: opacity 0.8s;
+            color: white;
+            font-family: sans-serif;
+        }
+    </style>
 </head>
 <body>
 
-<div id="loading" class="loading-overlay font-sans uppercase tracking-widest text-center">
-    <div class="mb-4 animate-pulse">Initializing Neural Gallery...</div>
-    <div class="text-[10px] text-gray-500">Cross-dissolve preloading enabled</div>
-</div>
-
-<div id="app-container">
-    <video id="input-video" playsinline></video>
-    
-    <!-- Cross-dissolve Layers -->
-    <img id="layer-primary" class="bg-layer" src="" alt="">
-    <img id="layer-secondary" class="bg-layer" src="" alt="">
-    
-    <div id="emotion-overlay">
-        <span id="emotion-text" class="text-[14vw] font-black italic text-white uppercase tracking-tighter opacity-90 transition-all duration-300">
-            STBY
-        </span>
+    <div id="loading" class="loading-overlay uppercase tracking-[0.2em] text-center">
+        <div class="mb-4 animate-pulse text-xl font-light">Loading Visual Experience...</div>
+        <div class="text-[10px] text-gray-400">Waiting for Camera & Neural Engine</div>
     </div>
-</div>
 
-<script>
-    const videoElement = document.getElementById('input-video');
-    const primaryImg = document.getElementById('layer-primary');
-    const secondaryImg = document.getElementById('layer-secondary');
-    const loadingScreen = document.getElementById('loading');
-    const emotionText = document.getElementById('emotion-text');
+    <div id="app-container">
+        <!-- Hidden video for processing -->
+        <video id="input-video" playsinline></video>
+        
+        <!-- Cross-dissolve Layers -->
+        <img id="layer-1" class="bg-layer active-layer" src="" alt="View 1">
+        <img id="layer-2" class="bg-layer" src="" alt="View 2">
+        
+        <div id="emotion-overlay">
+            <span id="emotion-text" class="text-[16vw] font-black italic text-white uppercase tracking-tighter opacity-95 transition-all duration-300">
+                INIT
+            </span>
+        </div>
+    </div>
 
-    const imagePool = [
-        'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1920&q=80',
-        'https://images.unsplash.com/photo-1501854140801-50d01674aa3e?auto=format&fit=crop&w=1920&q=80',
-        'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1920&q=80',
-        'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1920&q=80',
-        'https://images.unsplash.com/photo-1500673922987-e212871fec22?auto=format&fit=crop&w=1920&q=80',
-        'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=1920&q=80',
-        'https://images.unsplash.com/photo-1433086566608-573bb279327b?auto=format&fit=crop&w=1920&q=80',
-        'https://images.unsplash.com/photo-1532270660266-d477956e98ef?auto=format&fit=crop&w=1920&q=80'
-    ];
+    <script>
+        const videoElement = document.getElementById('input-video');
+        const layer1 = document.getElementById('layer-1');
+        const layer2 = document.getElementById('layer-2');
+        const loadingScreen = document.getElementById('loading');
+        const emotionText = document.getElementById('emotion-text');
 
-    let currentImgIndex = 0;
-    let activeLayer = primaryImg;
-    let inactiveLayer = secondaryImg;
+        // High-res landscape images
+        const imagePool = [
+            'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1501854140801-50d01674aa3e?auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1500673922987-e212871fec22?auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1433086566608-573bb279327b?auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1532270660266-d477956e98ef?auto=format&fit=crop&w=1920&q=80'
+        ];
 
-    function transitionToNextImage() {
-        currentImgIndex = (currentImgIndex + 1) % imagePool.length;
-        const nextUrl = imagePool[currentImgIndex];
+        let currentImgIndex = 0;
+        let activeLayer = layer1;
+        let inactiveLayer = layer2;
 
-        // 1. Start loading in the hidden layer
-        inactiveLayer.src = nextUrl;
+        function transitionToNextImage() {
+            currentImgIndex = (currentImgIndex + 1) % imagePool.length;
+            const nextUrl = imagePool[currentImgIndex];
 
-        // 2. Only transition when the new image is ready
-        inactiveLayer.onload = () => {
-            // Cross-dissolve
-            activeLayer.style.opacity = '0';
-            inactiveLayer.style.opacity = '1';
+            // 1. Preload the next image
+            const preloader = new Image();
+            preloader.src = nextUrl;
+            
+            preloader.onload = () => {
+                // 2. Set the src of the hidden layer
+                inactiveLayer.src = nextUrl;
+                
+                // 3. Swap classes for cross-dissolve
+                activeLayer.classList.remove('active-layer');
+                inactiveLayer.classList.add('active-layer');
 
-            // Swap layer roles
-            [activeLayer, inactiveLayer] = [inactiveLayer, activeLayer];
-        };
-    }
-
-    function detectEmotion(landmarks) {
-        if (!landmarks) return null;
-        const getDist = (p1, p2) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
-        const faceHeight = getDist(landmarks[10], landmarks[152]);
-        const mouthWidth = getDist(landmarks[78], landmarks[308]) / faceHeight;
-        const mouthOpen = getDist(landmarks[13], landmarks[14]) / faceHeight;
-        const eyeOpen = getDist(landmarks[159], landmarks[145]) / faceHeight;
-        const browHeight = getDist(landmarks[10], landmarks[105]) / faceHeight;
-
-        if (mouthOpen > 0.08 && eyeOpen > 0.03) return { label: "SURPRISED", color: "#ffffff" };
-        if (mouthWidth > 0.18 && mouthOpen < 0.06) return { label: "HAPPY", color: "#facc15" };
-        if (browHeight < 0.14) return { label: "ANGRY", color: "#ef4444" };
-        if (mouthOpen > 0.03 && mouthWidth < 0.15) return { label: "SAD", color: "#60a5fa" };
-        return { label: "NEUTRAL", color: "#ffffff" };
-    }
-
-    function onResults(results) {
-        if (loadingScreen.style.opacity !== '0') {
-            loadingScreen.style.opacity = '0';
-            setTimeout(() => loadingScreen.style.display = 'none', 800);
+                // 4. Swap layer pointers
+                const temp = activeLayer;
+                activeLayer = inactiveLayer;
+                inactiveLayer = temp;
+            };
         }
-        if (results.faceLandmarks) {
-            const emotion = detectEmotion(results.faceLandmarks);
-            if (emotion) {
-                emotionText.innerText = emotion.label;
-                emotionText.style.color = emotion.color;
-                emotionText.style.textShadow = `0 0 40px ${emotion.color}66`;
+
+        function detectEmotion(landmarks) {
+            if (!landmarks) return null;
+            const getDist = (p1, p2) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+            
+            const faceHeight = getDist(landmarks[10], landmarks[152]);
+            const mouthWidth = getDist(landmarks[78], landmarks[308]) / faceHeight;
+            const mouthOpen = getDist(landmarks[13], landmarks[14]) / faceHeight;
+            const eyeOpen = getDist(landmarks[159], landmarks[145]) / faceHeight;
+            const browHeight = getDist(landmarks[10], landmarks[105]) / faceHeight;
+
+            // Simplified detection labels
+            if (mouthOpen > 0.09 && eyeOpen > 0.035) return { label: "SURPRISED", color: "#ffffff" };
+            if (mouthWidth > 0.2 && mouthOpen < 0.08) return { label: "HAPPY", color: "#facc15" };
+            if (browHeight < 0.14) return { label: "ANGRY", color: "#ef4444" };
+            if (mouthOpen > 0.03 && mouthWidth < 0.16) return { label: "SAD", color: "#60a5fa" };
+            return { label: "NEUTRAL", color: "#ffffff" };
+        }
+
+        function onResults(results) {
+            // Hide loading screen on first valid result
+            if (loadingScreen.style.opacity !== '0') {
+                loadingScreen.style.opacity = '0';
+                setTimeout(() => loadingScreen.style.display = 'none', 800);
             }
-        } else {
-            emotionText.innerText = "NO FACE";
-            emotionText.style.color = "#4b5563";
+
+            if (results.faceLandmarks) {
+                const emotion = detectEmotion(results.faceLandmarks);
+                if (emotion) {
+                    emotionText.innerText = emotion.label;
+                    emotionText.style.color = emotion.color;
+                    emotionText.style.textShadow = `0 0 50px ${emotion.color}77`;
+                }
+            } else {
+                emotionText.innerText = "WAITING";
+                emotionText.style.color = "#555";
+            }
         }
-    }
 
-    const holistic = new Holistic({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`
-    });
+        const holistic = new Holistic({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`
+        });
 
-    holistic.setOptions({
-        modelComplexity: 0,
-        refineLandmarks: true,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5
-    });
+        holistic.setOptions({
+            modelComplexity: 0,
+            refineLandmarks: true,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
 
-    holistic.onResults(onResults);
+        holistic.onResults(onResults);
 
-    const camera = new Camera(videoElement, {
-        onFrame: async () => { await holistic.send({image: videoElement}); },
-        width: 640, height: 480
-    });
+        const camera = new Camera(videoElement, {
+            onFrame: async () => {
+                await holistic.send({image: videoElement});
+            },
+            width: 640, height: 480
+        });
 
-    window.onload = () => {
-        // Set initial image
-        primaryImg.src = imagePool[0];
-        camera.start();
-        // Interval for swapping
-        setInterval(transitionToNextImage, 15000);
-    };
-</script>
-
-
+        window.onload = () => {
+            // Initialize first image
+            activeLayer.src = imagePool[0];
+            camera.start();
+            
+            // Cycle images every 15 seconds
+            setInterval(transitionToNextImage, 15000);
+        };
+    </script>
 </body>
 </html>
