@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rawbender | structural interference</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+
+        body {
+            background-color: #020617;
+            color: #f8fafc;
+            font-family: 'JetBrains Mono', monospace;
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header-gradient {
+            background: linear-gradient(to bottom, rgba(251, 113, 133, 0.1), transparent);
+        }
+
+        .canvas-container {
+            background-image: 
+                linear-gradient(45deg, #0f172a 25%, transparent 25%), 
+                linear-gradient(-45deg, #0f172a 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #0f172a 75%), 
+                linear-gradient(-45deg, transparent 75%, #0f172a 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            position: relative;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: #1e293b;
+            border-radius: 2px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: #fb7185;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.3);
+        }
+
+        .scanline {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, transparent, rgba(251, 113, 133, 0.03) 50%, transparent);
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            animation: moveScanline 8s linear infinite;
+        }
+
+        @keyframes moveScanline {
+            from { transform: translateY(-100%); }
+            to { transform: translateY(100%); }
+        }
+
+        .btn-action {
+            background: rgba(251, 113, 133, 0.1);
+            border: 1px solid rgba(251, 113, 133, 0.2);
+            transition: all 0.2s ease;
+        }
+
+        .btn-action:hover:not(:disabled) {
+            background: rgba(251, 113, 133, 0.2);
+            border-color: #fb7185;
+            color: #fb7185;
+        }
+
+        .btn-action:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .active-tool {
+            background: #fb7185 !important;
+            color: #020617 !important;
+            border-color: #fb7185 !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-gradient p-6 border-b border-white/5">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-4">
+                <a href="index.html" class="text-slate-500 hover:text-white transition-colors">← Hub</a>
+                <h1 class="text-2xl font-bold tracking-tighter uppercase italic">Raw<span class="text-rose-500">bender</span></h1>
+                <span class="text-[10px] bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded border border-rose-500/20 uppercase font-bold">Structural interference</span>
+            </div>
+            
+            <div class="flex gap-2">
+                <input type="file" id="imageInput" accept="image/*" class="hidden">
+                <button onclick="document.getElementById('imageInput').click()" class="px-4 py-2 bg-white text-black text-xs font-bold uppercase tracking-wider rounded-md hover:bg-rose-500 hover:text-white transition-all">
+                    Load Source
+                </button>
+                <button id="downloadBtn" disabled onclick="downloadImage()" class="px-4 py-2 btn-action text-xs font-bold uppercase tracking-wider rounded-md">
+                    Export Output
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <main class="flex-grow flex flex-col lg:flex-row max-w-7xl mx-auto w-full p-6 gap-6">
+        <!-- Editor View -->
+        <div class="flex-grow flex flex-col gap-4">
+            <div id="dropZone" class="canvas-container flex-grow rounded-2xl overflow-hidden flex items-center justify-center min-h-[400px]">
+                <div class="scanline"></div>
+                <canvas id="mainCanvas" class="max-w-full max-h-full shadow-2xl"></canvas>
+                <div id="placeholder" class="text-center p-8">
+                    <p class="text-slate-500 text-xs uppercase tracking-widest leading-loose">
+                        Drop image here or use "Load Source"<br>
+                        <span class="text-[10px] opacity-50 italic">Supports RAW, PNG, JPG pixel mapping</span>
+                    </p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-white/5 p-4 rounded-xl border border-white/5">
+                    <label class="text-[10px] uppercase text-slate-500 font-bold block mb-2">Interference Level</label>
+                    <input type="range" id="intensity" min="1" max="100" value="20">
+                </div>
+                <div class="bg-white/5 p-4 rounded-xl border border-white/5">
+                    <label class="text-[10px] uppercase text-slate-500 font-bold block mb-2">Shift Offset</label>
+                    <input type="range" id="offset" min="0" max="255" value="50">
+                </div>
+                <div class="bg-white/5 p-4 rounded-xl border border-white/5">
+                    <label class="text-[10px] uppercase text-slate-500 font-bold block mb-2">Iteration Count</label>
+                    <input type="range" id="iterations" min="1" max="10" value="1">
+                </div>
+                <div class="bg-white/5 p-4 rounded-xl border border-white/5">
+                    <label class="text-[10px] uppercase text-slate-500 font-bold block mb-2">Color Mode</label>
+                    <select id="colorMode" class="bg-transparent text-xs font-bold uppercase text-rose-500 w-full focus:outline-none">
+                        <option value="rgb">RGB Spread</option>
+                        <option value="brg">BRG Shift</option>
+                        <option value="mono">Mono Core</option>
+                        <option value="invert">Neural Invert</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Tools -->
+        <div class="w-full lg:w-72 flex flex-col gap-4">
+            <h3 class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 mb-2">Process Algorithms</h3>
+            
+            <button onclick="setAlgorithm('byte-drift')" class="algo-btn btn-action active-tool p-4 rounded-xl text-left flex flex-col gap-1">
+                <span class="text-xs font-bold uppercase tracking-tight">Byte Drift</span>
+                <span class="text-[9px] opacity-60">Linear pixel displacement by index</span>
+            </button>
+
+            <button onclick="setAlgorithm('slice-shift')" class="algo-btn btn-action p-4 rounded-xl text-left flex flex-col gap-1">
+                <span class="text-xs font-bold uppercase tracking-tight">Channel Slice</span>
+                <span class="text-[9px] opacity-60">Isolate and offset RGBA channels</span>
+            </button>
+
+            <button onclick="setAlgorithm('sort')" class="algo-btn btn-action p-4 rounded-xl text-left flex flex-col gap-1">
+                <span class="text-xs font-bold uppercase tracking-tight">Binary Sort</span>
+                <span class="text-[9px] opacity-60">Sort pixels by luminance values</span>
+            </button>
+
+            <button onclick="setAlgorithm('interference')" class="algo-btn btn-action p-4 rounded-xl text-left flex flex-col gap-1">
+                <span class="text-xs font-bold uppercase tracking-tight">Signal Noise</span>
+                <span class="text-[9px] opacity-60">Inject random binary noise patterns</span>
+            </button>
+
+            <div class="mt-4 p-4 border border-rose-500/20 bg-rose-500/5 rounded-xl">
+                <p class="text-[9px] text-rose-400 uppercase font-bold mb-2">Terminal Logs</p>
+                <div id="logs" class="text-[9px] text-slate-500 font-mono flex flex-col gap-1 max-h-32 overflow-y-auto">
+                    <div>> System initialized.</div>
+                    <div>> Awaiting source buffer...</div>
+                </div>
+            </div>
+
+            <button onclick="applyGlitch()" id="processBtn" disabled class="mt-auto py-4 bg-rose-500 text-black font-black uppercase tracking-widest rounded-xl hover:bg-rose-400 transition-colors shadow-lg shadow-rose-500/20">
+                Execute Process
+            </button>
+        </div>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        const imageInput = document.getElementById('imageInput');
+        const logs = document.getElementById('logs');
+        
+        let originalImageData = null;
+        let currentAlgorithm = 'byte-drift';
+
+        function addLog(msg) {
+            const entry = document.createElement('div');
+            entry.textContent = `> ${msg}`;
+            logs.prepend(entry);
+        }
+
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    // Set canvas size based on image but keep it reasonable
+                    const maxDim = 1200;
+                    let w = img.width;
+                    let h = img.height;
+                    
+                    if (w > maxDim || h > maxDim) {
+                        const ratio = Math.min(maxDim / w, maxDim / h);
+                        w *= ratio;
+                        h *= ratio;
+                    }
+
+                    canvas.width = w;
+                    canvas.height = h;
+                    ctx.drawImage(img, 0, 0, w, h);
+                    originalImageData = ctx.getImageData(0, 0, w, h);
+                    
+                    document.getElementById('placeholder').style.display = 'none';
+                    document.getElementById('downloadBtn').disabled = false;
+                    document.getElementById('processBtn').disabled = false;
+                    addLog(`Buffer loaded: ${w}x${h}px`);
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function setAlgorithm(algo) {
+            currentAlgorithm = algo;
+            document.querySelectorAll('.algo-btn').forEach(btn => btn.classList.remove('active-tool'));
+            event.currentTarget.classList.add('active-tool');
+            addLog(`Switching to ${algo}...`);
+        }
+
+        function applyGlitch() {
+            if (!originalImageData) return;
+            
+            const intensity = parseInt(document.getElementById('intensity').value);
+            const offset = parseInt(document.getElementById('offset').value);
+            const iterations = parseInt(document.getElementById('iterations').value);
+            const colorMode = document.getElementById('colorMode').value;
+            
+            let tempImageData = new ImageData(
+                new Uint8ClampedArray(originalImageData.data),
+                originalImageData.width,
+                originalImageData.height
+            );
+
+            addLog(`Executing ${currentAlgorithm}...`);
+
+            for (let i = 0; i < iterations; i++) {
+                switch(currentAlgorithm) {
+                    case 'byte-drift':
+                        byteDrift(tempImageData, intensity, offset);
+                        break;
+                    case 'slice-shift':
+                        sliceShift(tempImageData, intensity, offset);
+                        break;
+                    case 'sort':
+                        pixelSort(tempImageData, intensity);
+                        break;
+                    case 'interference':
+                        signalNoise(tempImageData, intensity);
+                        break;
+                }
+            }
+
+            // Apply color mode shifts
+            if (colorMode !== 'rgb') {
+                applyColorShift(tempImageData, colorMode);
+            }
+
+            ctx.putImageData(tempImageData, 0, 0);
+            addLog(`Process complete.`);
+        }
+
+        function byteDrift(imageData, intensity, offset) {
+            const data = imageData.data;
+            const threshold = (100 - intensity) * 100;
+            
+            for (let i = 0; i < data.length; i += 4) {
+                if (Math.random() * 10000 > threshold) {
+                    const shift = Math.floor(Math.random() * offset) * 4;
+                    if (i + shift < data.length) {
+                        data[i] = data[i + shift];
+                        data[i+1] = data[i + shift + 1];
+                        data[i+2] = data[i + shift + 2];
+                    }
+                }
+            }
+        }
+
+        function sliceShift(imageData, intensity, offset) {
+            const data = imageData.data;
+            const w = imageData.width;
+            const h = imageData.height;
+            const sliceCount = Math.floor(intensity / 10) + 1;
+
+            for (let s = 0; s < sliceCount; s++) {
+                const yStart = Math.floor(Math.random() * h);
+                const hSlice = Math.floor(Math.random() * (h / 5));
+                const xShift = Math.floor((Math.random() - 0.5) * offset);
+
+                for (let y = yStart; y < yStart + hSlice && y < h; y++) {
+                    const row = new Uint8ClampedArray(data.buffer, y * w * 4, w * 4);
+                    const newRow = new Uint8ClampedArray(w * 4);
+                    for (let x = 0; x < w; x++) {
+                        const targetX = (x + xShift + w) % w;
+                        newRow[targetX * 4] = row[x * 4];
+                        newRow[targetX * 4 + 1] = row[x * 4 + 1];
+                        newRow[targetX * 4 + 2] = row[x * 4 + 2];
+                        newRow[targetX * 4 + 3] = row[x * 4 + 3];
+                    }
+                    data.set(newRow, y * w * 4);
+                }
+            }
+        }
+
+        function signalNoise(imageData, intensity) {
+            const data = imageData.data;
+            const chance = intensity / 100;
+            for (let i = 0; i < data.length; i += 4) {
+                if (Math.random() < chance) {
+                    data[i] = Math.random() * 255;     // R
+                    data[i+1] = Math.random() * 255;   // G
+                    data[i+2] = Math.random() * 255;   // B
+                }
+            }
+        }
+
+        function pixelSort(imageData, intensity) {
+            const data = imageData.data;
+            const w = imageData.width;
+            const h = imageData.height;
+            const threshold = (100 - intensity) * 2.55;
+
+            for (let y = 0; y < h; y += 2) { // Sort every other row for speed/style
+                let row = [];
+                for (let x = 0; x < w; x++) {
+                    const idx = (y * w + x) * 4;
+                    const luma = 0.299 * data[idx] + 0.587 * data[idx+1] + 0.114 * data[idx+2];
+                    row.push({ r: data[idx], g: data[idx+1], b: data[idx+2], a: data[idx+3], luma });
+                }
+
+                // Sort segments that meet threshold
+                let start = 0;
+                while (start < w) {
+                    while (start < w && row[start].luma < threshold) start++;
+                    let end = start;
+                    while (end < w && row[end].luma >= threshold) end++;
+                    
+                    if (start < end) {
+                        const segment = row.slice(start, end).sort((a, b) => a.luma - b.luma);
+                        for (let i = 0; i < segment.length; i++) {
+                            const idx = (y * w + (start + i)) * 4;
+                            data[idx] = segment[i].r;
+                            data[idx+1] = segment[i].g;
+                            data[idx+2] = segment[i].b;
+                            data[idx+3] = segment[i].a;
+                        }
+                    }
+                    start = end;
+                }
+            }
+        }
+
+        function applyColorShift(imageData, mode) {
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i], g = data[i+1], b = data[i+2];
+                if (mode === 'brg') {
+                    data[i] = b; data[i+1] = r; data[i+2] = g;
+                } else if (mode === 'mono') {
+                    const avg = (r + g + b) / 3;
+                    data[i] = avg; data[i+1] = avg; data[i+2] = avg;
+                } else if (mode === 'invert') {
+                    data[i] = 255 - r; data[i+1] = 255 - g; data[i+2] = 255 - b;
+                }
+            }
+        }
+
+        function downloadImage() {
+            const link = document.createElement('a');
+            link.download = `glitch-output-${Date.now()}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+            addLog("Exported to local drive.");
+        }
+
+        // Drag and Drop
+        const dropZone = document.getElementById('dropZone');
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#fb7185';
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.borderColor = 'rgba(255,255,255,0.05)';
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                imageInput.files = dt.files;
+                imageInput.dispatchEvent(new Event('change'));
+            }
+        });
+    </script>
+</body>
+</html>

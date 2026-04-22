@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAWBENDER | The Data Glitcher</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            background-color: #050505; 
+            color: #e2e8f0; 
+            font-family: 'Courier New', Courier, monospace; 
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        canvas {
+            image-rendering: pixelated;
+            max-width: 95%;
+            max-height: 80vh;
+            border: 1px solid #334155;
+            box-shadow: 0 0 40px rgba(0,0,0,0.9);
+        }
+        .ui-panel {
+            background: #0f172a;
+            border-bottom: 2px solid #f43f5e;
+        }
+        .control-group {
+            border-right: 1px solid #1e293b;
+            padding-right: 1rem;
+        }
+        input[type=range] {
+            accent-color: #f43f5e;
+            height: 2px;
+            appearance: none;
+            background: #334155;
+        }
+        .label-v {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #94a3b8;
+            margin-bottom: 4px;
+        }
+        .val-display {
+            font-size: 10px;
+            color: #f43f5e;
+            font-weight: bold;
+        }
+        .btn-mode {
+            background: #1e293b;
+            color: #94a3b8;
+            border: 1px solid #334155;
+            padding: 4px 8px;
+            font-size: 9px;
+            text-transform: uppercase;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .btn-mode.active {
+            background: #f43f5e;
+            color: white;
+            border-color: #f43f5e;
+        }
+        .btn-action {
+            background: #334155;
+            color: #f8fafc;
+            font-size: 8px;
+            padding: 2px 6px;
+            border-radius: 2px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        .btn-action:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body>
+    <div class="ui-panel p-4 flex gap-6 items-center shrink-0 overflow-x-auto">
+        <div class="control-group">
+            <h1 class="text-rose-500 font-black italic tracking-tighter text-xl leading-none">RAWBENDER</h1>
+            <p class="text-[8px] text-slate-500">GLITCH ENGINE v3.7</p>
+        </div>
+
+        <div class="control-group flex flex-col gap-2">
+            <div class="flex items-center gap-2">
+                <input type="file" id="fileInput" class="hidden" />
+                <button onclick="document.getElementById('fileInput').click()" class="bg-slate-800 px-3 py-2 text-[10px] font-bold hover:bg-slate-700 transition">LOAD FILE</button>
+                <button onclick="saveCanvas()" class="bg-blue-600 px-3 py-2 text-[10px] font-bold hover:bg-blue-500 transition">SAVE</button>
+                <button onclick="undo()" id="undoBtn" disabled class="bg-slate-900 px-3 py-2 text-[10px] font-bold opacity-30">UNDO</button>
+            </div>
+            <div class="flex gap-1">
+                <button id="modeSync" onclick="setMode('sync')" class="btn-mode">Sync RGB</button>
+                <button id="modeInter" onclick="setMode('interleave')" class="btn-mode active">Interleave</button>
+                <button id="modeSingle" onclick="setMode('single')" class="btn-mode">Single Channel</button>
+                <button id="flipBtn" onclick="toggleFlip()" class="btn-mode">Flip V</button>
+            </div>
+        </div>
+
+        <div class="control-group flex flex-col gap-1 w-56">
+            <div class="flex justify-between label-v">
+                <span>Stride (Width)</span>
+                <div class="flex gap-2">
+                    <button onclick="stepStride(-1)" class="text-rose-500 hover:text-white">-</button>
+                    <span id="widthVal" class="val-display">0</span>
+                    <button onclick="stepStride(1)" class="text-rose-500 hover:text-white">+</button>
+                </div>
+            </div>
+            <input type="range" id="widthSlider" min="1" max="4000" value="1024">
+            
+            <div class="flex justify-between label-v mt-2">
+                <span>Byte Offset</span>
+                <span id="offsetVal" class="val-display">0</span>
+            </div>
+            <input type="range" id="offsetSlider" min="0" max="100000" value="0">
+        </div>
+
+        <div id="channelGroup" class="control-group flex gap-4">
+            <div class="flex flex-col gap-1 w-24">
+                <span class="label-v text-rose-400">R-Shift</span>
+                <input type="range" id="rShift" min="-500" max="500" value="0">
+                <span class="label-v text-emerald-400 mt-2">G-Shift</span>
+                <input type="range" id="gShift" min="-500" max="500" value="0">
+            </div>
+            <div class="flex flex-col gap-1 w-28">
+                <span class="label-v text-blue-400">B-Shift</span>
+                <input type="range" id="bShift" min="-500" max="500" value="0">
+                <div class="flex gap-1 mt-2">
+                    <button onclick="applyBGR()" class="btn-action">BGR Swap</button>
+                    <button onclick="applyReInterleave()" class="btn-action">Re-Interleave</button>
+                </div>
+            </div>
+            <div class="flex flex-col gap-1 w-20">
+                <span class="label-v text-slate-400">Bit-Crush</span>
+                <input type="range" id="bitCrush" min="1" max="255" value="1">
+            </div>
+        </div>
+
+        <div class="text-[9px] text-slate-600 max-w-[120px] leading-tight italic" id="status">
+            Drag image to start...
+        </div>
+    </div>
+
+    <div class="flex-grow flex items-center justify-center p-6 bg-black relative">
+        <canvas id="mainCanvas" class="hidden"></canvas>
+        <div id="dropMsg" class="border border-slate-900 p-20 text-slate-800 text-xs uppercase tracking-[0.3em] text-center">
+            Drop Source Data
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        const fileInput = document.getElementById('fileInput');
+        
+        let rawBytes = null;
+        let history = [];
+        let isFlipped = false;
+        let mode = 'interleave'; 
+        let originalW = 0;
+
+        const sWidth = document.getElementById('widthSlider');
+        const sOffset = document.getElementById('offsetSlider');
+        const sR = document.getElementById('rShift');
+        const sG = document.getElementById('gShift');
+        const sB = document.getElementById('bShift');
+        const sBit = document.getElementById('bitCrush');
+
+        fileInput.onchange = (e) => loadFile(e.target.files[0]);
+
+        function saveHistory() {
+            if (!rawBytes) return;
+            history.push(new Uint8Array(rawBytes));
+            if (history.length > 10) history.shift();
+            document.getElementById('undoBtn').style.opacity = "1";
+            document.getElementById('undoBtn').disabled = false;
+        }
+
+        function undo() {
+            if (history.length > 0) {
+                rawBytes = history.pop();
+                if (history.length === 0) {
+                    document.getElementById('undoBtn').style.opacity = "0.3";
+                    document.getElementById('undoBtn').disabled = true;
+                }
+                render();
+            }
+        }
+
+        function loadFile(file) {
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    originalW = img.width;
+                    const tCanvas = document.createElement('canvas');
+                    tCanvas.width = img.width; tCanvas.height = img.height;
+                    const tCtx = tCanvas.getContext('2d');
+                    tCtx.drawImage(img, 0, 0);
+                    const pixels = tCtx.getImageData(0, 0, img.width, img.height).data;
+                    
+                    rawBytes = new Uint8Array(img.width * img.height * 3);
+                    for(let i=0; i < img.width * img.height; i++) {
+                        rawBytes[i*3]     = pixels[i*4];
+                        rawBytes[i*3 + 1] = pixels[i*4 + 1];
+                        rawBytes[i*3 + 2] = pixels[i*4 + 2];
+                    }
+                    
+                    // RESET SETTINGS ON LOAD
+                    sWidth.value = originalW;
+                    sOffset.value = 0;
+                    
+                    // Update maximums based on new file size
+                    sOffset.max = rawBytes.length;
+                    sWidth.max = Math.max(originalW * 2, 4000);
+                    
+                    history = [];
+                    document.getElementById('undoBtn').style.opacity = "0.3";
+                    document.getElementById('undoBtn').disabled = true;
+                    
+                    document.getElementById('status').innerText = `BUFFER: ${rawBytes.length} BYTES`;
+                    render();
+                };
+                img.src = URL.createObjectURL(file);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function applyBGR() {
+            if (!rawBytes) return;
+            saveHistory();
+            for (let i = 0; i < rawBytes.length; i += 3) {
+                let r = rawBytes[i];
+                rawBytes[i] = rawBytes[i+2];
+                rawBytes[i+2] = r;
+            }
+            render();
+        }
+
+        function applyReInterleave() {
+            if (!rawBytes) return;
+            saveHistory();
+            const len = rawBytes.length;
+            const planeSize = Math.floor(len / 3);
+            const newBytes = new Uint8Array(len);
+            
+            for (let i = 0; i < planeSize; i++) {
+                newBytes[i*3]     = rawBytes[i];
+                newBytes[i*3 + 1] = rawBytes[planeSize + i];
+                newBytes[i*3 + 2] = rawBytes[planeSize * 2 + i];
+            }
+            rawBytes = newBytes;
+            render();
+        }
+
+        function setMode(m) {
+            mode = m;
+            ['Sync', 'Inter', 'Single'].forEach(id => document.getElementById('mode'+id).classList.remove('active'));
+            document.getElementById('mode' + m.charAt(0).toUpperCase() + m.slice(1).substring(0,4)).classList.add('active');
+            
+            document.getElementById('channelGroup').style.opacity = (m === 'interleave') ? '1' : '0.3';
+            render();
+        }
+
+        function toggleFlip() { 
+            isFlipped = !isFlipped; 
+            document.getElementById('flipBtn').classList.toggle('active', isFlipped);
+            render(); 
+        }
+
+        function stepStride(val) {
+            sWidth.value = parseInt(sWidth.value) + val;
+            render();
+        }
+
+        function render() {
+            if (!rawBytes) return;
+            canvas.classList.remove('hidden');
+            document.getElementById('dropMsg').classList.add('hidden');
+
+            const width = parseInt(sWidth.value);
+            const offset = parseInt(sOffset.value);
+            const rS = parseInt(sR.value);
+            const gS = parseInt(sG.value);
+            const bS = parseInt(sB.value);
+            const bit = parseInt(sBit.value);
+
+            document.getElementById('widthVal').innerText = width;
+            document.getElementById('offsetVal').innerText = offset;
+
+            let bytesPerPixel = (mode === 'single') ? 1 : 3;
+            const height = Math.min(Math.ceil((rawBytes.length - offset) / (width * bytesPerPixel)), 3000);
+            
+            if (height <= 0 || width <= 0) return;
+
+            canvas.width = width;
+            canvas.height = height;
+            const imgData = ctx.createImageData(width, height);
+            const d = imgData.data;
+
+            const getB = (idx) => {
+                if (idx < 0 || idx >= rawBytes.length) return 0;
+                let val = rawBytes[idx];
+                return bit > 1 ? Math.floor(val / bit) * bit : val;
+            };
+
+            for (let y = 0; y < height; y++) {
+                const drawY = isFlipped ? (height - 1 - y) : y;
+                for (let x = 0; x < width; x++) {
+                    const outIdx = (drawY * width + x) * 4;
+                    const base = offset + (y * width + x) * bytesPerPixel;
+
+                    if (mode === 'sync') {
+                        d[outIdx]     = getB(base);
+                        d[outIdx + 1] = getB(base + 1);
+                        d[outIdx + 2] = getB(base + 2);
+                    } else if (mode === 'interleave') {
+                        d[outIdx]     = getB(base + rS);
+                        d[outIdx + 1] = getB(base + 1 + gS);
+                        d[outIdx + 2] = getB(base + 2 + bS);
+                    } else {
+                        const v = getB(base);
+                        d[outIdx] = d[outIdx+1] = d[outIdx+2] = v;
+                    }
+                    d[outIdx + 3] = 255;
+                }
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        [sWidth, sOffset, sR, sG, sB, sBit].forEach(s => s.oninput = render);
+
+        function saveCanvas() {
+            const link = document.createElement('a');
+            link.download = `rawbender_${mode}_${Date.now()}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+
+        window.addEventListener('dragover', e => e.preventDefault());
+        window.addEventListener('drop', e => {
+            e.preventDefault();
+            if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+        });
+        
+        setMode('interleave');
+    </script>
+</body>
+</html>

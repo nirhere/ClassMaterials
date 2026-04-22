@@ -8,6 +8,10 @@
     <style>
         body { 
             background-color: #020617; 
+            background-image: url('https://nirhere.github.io/ClassMaterials/image.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
             color: #f8fafc; 
             font-family: 'JetBrains Mono', 'Fira Code', monospace; 
             height: 100vh;
@@ -34,17 +38,19 @@
         }
 
         .glitch-card {
-            background: #0f172a;
-            border: 1px solid #1e293b;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(30, 41, 59, 0.5);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
+            backdrop-filter: blur(4px);
         }
 
         .glitch-card:hover {
             border-color: #0891b2;
             transform: translateY(-5px);
             box-shadow: 0 0 30px rgba(8, 145, 178, 0.2);
+            background: rgba(15, 23, 42, 0.95);
         }
 
         .glitch-card::before {
@@ -66,54 +72,93 @@
         .glitch-card:hover::before {
             left: 100%;
         }
+
+        .main-container {
+            background: rgba(2, 6, 23, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
     </style>
 </head>
 <body>
     <div class="scanline"></div>
 
-    <div class="max-w-4xl w-full px-6 text-center">
-        <header class="mb-16">
-            <h1 class="text-6xl md:text-8xl font-black tracking-tighter uppercase italic">
+    <!-- Rounded Rectangle Center Screen -->
+    <div class="main-container max-w-5xl w-full mx-6 p-8 md:p-16 rounded-[2rem] shadow-2xl text-center relative z-20">
+        <header class="mb-12">
+            <h1 class="text-5xl md:text-7xl font-black tracking-tighter uppercase italic">
                 Intro to <span class="text-cyan-400">Media</span>
             </h1>
-            <div class="h-1 w-24 bg-cyan-500 mx-auto mt-4"></div>
-            <p class="mt-8 text-slate-500 text-sm uppercase tracking-[0.5em] font-bold">Laboratory of Digital Deconstruction</p>
+            <div class="h-1 w-20 bg-cyan-500 mx-auto mt-4"></div>
+            <p class="mt-6 text-slate-400 text-xs uppercase tracking-[0.4em] font-bold">Laboratory of Digital Deconstruction</p>
         </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Text Bender Link -->
-            <a href="https://nirhere.github.io/textbender.html" class="glitch-card p-10 rounded-2xl group text-left">
+            <a href="https://nirhere.github.io/ClassMaterials/textbender.html" class="glitch-card p-8 rounded-2xl group text-left">
                 <div class="flex justify-between items-start mb-4">
-                    <span class="text-cyan-500 font-bold text-xs uppercase tracking-widest">Image Manipulation</span>
-                    <span class="text-slate-700 text-xs font-mono">v2.6</span>
+                    <span class="text-cyan-500 font-bold text-[10px] uppercase tracking-widest">Image Manipulation</span>
+                    <span class="text-slate-500 text-[10px] font-mono">v2.6</span>
                 </div>
-                <h2 class="text-3xl font-black uppercase italic mb-2 group-hover:text-cyan-400 transition-colors">Textbender</h2>
-                <p class="text-slate-400 text-sm leading-relaxed mb-8">
+                <h2 class="text-2xl font-black uppercase italic mb-2 group-hover:text-cyan-400 transition-colors">Textbender</h2>
+                <p class="text-slate-400 text-xs leading-relaxed mb-6">
                     Bend visual reality by injecting raw text and scrambling hex streams. For image glitching and data-moshing.
                 </p>
-                <div class="inline-flex items-center text-xs font-bold uppercase tracking-tighter text-cyan-500">
+                <div class="inline-flex items-center text-[10px] font-bold uppercase tracking-tighter text-cyan-500">
                     Enter Terminal <span class="ml-2 group-hover:translate-x-2 transition-transform">→</span>
                 </div>
             </a>
 
             <!-- Data Bender Link -->
-            <a href="https://nirhere.github.io/ClassMaterialsdatabend.html" class="glitch-card p-10 rounded-2xl group text-left">
+            <a href="https://nirhere.github.io/ClassMaterials/databend.html" class="glitch-card p-8 rounded-2xl group text-left">
                 <div class="flex justify-between items-start mb-4">
-                    <span class="text-indigo-500 font-bold text-xs uppercase tracking-widest">Audio Synthesis</span>
-                    <span class="text-slate-700 text-xs font-mono">BETA</span>
+                    <span class="text-indigo-500 font-bold text-[10px] uppercase tracking-widest">Audio Synthesis</span>
+                    <span class="text-slate-500 text-[10px] font-mono">BETA</span>
                 </div>
-                <h2 class="text-3xl font-black uppercase italic mb-2 group-hover:text-indigo-400 transition-colors">Databender</h2>
-                <p class="text-slate-400 text-sm leading-relaxed mb-8">
+                <h2 class="text-2xl font-black uppercase italic mb-2 group-hover:text-indigo-400 transition-colors">Databender</h2>
+                <p class="text-slate-400 text-xs leading-relaxed mb-6">
                     Convert non-audio data into soundscapes. Explore the sonic textures of broken files and raw binary.
                 </p>
-                <div class="inline-flex items-center text-xs font-bold uppercase tracking-tighter text-indigo-500">
+                <div class="inline-flex items-center text-[10px] font-bold uppercase tracking-tighter text-indigo-500">
                     Load Processor <span class="ml-2 group-hover:translate-x-2 transition-transform">→</span>
                 </div>
             </a>
         </div>
 
-        <footer class="mt-20">
-            <p class="text-[10px] text-slate-700 uppercase tracking-widest font-bold">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto mt-5">
+            <!-- Raw Bender Link -->
+            <a href="https://nirhere.github.io/ClassMaterials/rawbender.html" class="glitch-card p-5 rounded-xl group text-left">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-emerald-500 font-bold text-[9px] uppercase tracking-widest">Raw Data</span>
+                    <span class="text-slate-500 text-[9px] font-mono">v1.0</span>
+                </div>
+                <h2 class="text-lg font-black uppercase italic mb-1 group-hover:text-emerald-400 transition-colors">Rawbender</h2>
+                <p class="text-slate-400 text-[11px] leading-relaxed mb-3">
+                    Open and bend raw file structures directly for low-level experimentation.
+                </p>
+                <div class="inline-flex items-center text-[9px] font-bold uppercase tracking-tighter text-emerald-500">
+                    Open Tool <span class="ml-2 group-hover:translate-x-2 transition-transform">→</span>
+                </div>
+            </a>
+
+            <!-- Struct Bender Link -->
+            <a href="https://nirhere.github.io/ClassMaterials/structbender.html" class="glitch-card p-5 rounded-xl group text-left">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-amber-500 font-bold text-[9px] uppercase tracking-widest">File Structure</span>
+                    <span class="text-slate-500 text-[9px] font-mono">v1.0</span>
+                </div>
+                <h2 class="text-lg font-black uppercase italic mb-1 group-hover:text-amber-400 transition-colors">Structbender</h2>
+                <p class="text-slate-400 text-[11px] leading-relaxed mb-3">
+                    Reshape and mutate internal file structure patterns for creative corruption.
+                </p>
+                <div class="inline-flex items-center text-[9px] font-bold uppercase tracking-tighter text-amber-500">
+                    Open Tool <span class="ml-2 group-hover:translate-x-2 transition-transform">→</span>
+                </div>
+            </a>
+        </div>
+
+        <footer class="mt-12">
+            <p class="text-[9px] text-slate-500 uppercase tracking-widest font-bold">
                 Experimental Media Arts // Academic Use Only
             </p>
         </footer>
