@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DATABENDER | Intro to Media</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: sans-serif; }
+        .canvas-container { position: relative; width: 100%; height: 240px; background: #020617; border-radius: 12px; overflow: hidden; cursor: crosshair; border: 1px solid #1e293b; box-shadow: inset 0 2px 10px rgba(0,0,0,0.5); }
+        canvas { display: block; width: 100%; height: 100%; }
+        .selection-overlay { position: absolute; top: 0; height: 100%; background: rgba(59, 130, 246, 0.25); border-left: 2px solid #3b82f6; border-right: 2px solid #3b82f6; pointer-events: none; z-index: 10; }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        #rawPreviewCanvas { image-rendering: pixelated; background: #000; max-width: 100%; height: auto; border-radius: 4px; }
+        
+        .filter-btn { 
+            background: #1e293b; 
+            border: 1px solid #334155; 
+            border-radius: 6px; 
+            padding: 10px 4px; 
+            font-size: 10px; 
+            font-weight: 700; 
+            text-transform: uppercase; 
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); 
+            color: #94a3b8;
+            letter-spacing: 0.05em;
+        }
+        .filter-btn:hover { background: #334155; border-color: #475569; color: #fff; transform: translateY(-1px); }
+        .filter-btn:active { transform: translateY(0px); opacity: 0.8; }
+        
+        .modal-enter { animation: modalIn 0.2s ease-out forwards; }
+        @keyframes modalIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        
+        input[type=range] { -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #1e293b; border-radius: 3px; }
+        input[type=range]::-webkit-slider-thumb { height: 18px; width: 18px; border-radius: 50%; background: #3b82f6; cursor: pointer; -webkit-appearance: none; margin-top: -6px; box-shadow: 0 0 10px rgba(59, 130, 246, 0.4); border: 2px solid #0f172a; }
+
+        .btn-group-load { position: relative; display: inline-flex; vertical-align: middle; }
+        .btn-main { border-radius: 12px 0 0 12px !important; }
+        .btn-split { border-radius: 0 12px 12px 0 !important; border-left: 1px solid #334155 !important; padding-left: 10px !important; padding-right: 10px !important; }
+        .dropdown-menu { position: absolute; top: 100%; right: 0; margin-top: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 8px; z-index: 50; min-width: 200px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+
+        .step-btn {
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: #94a3b8;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+        .step-btn:hover { background: #334155; color: white; }
+    </style>
+</head>
+<body class="p-6 md:p-10 custom-scrollbar">
+    <!-- PARAMETER MODAL -->
+    <div id="paramModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md hidden">
+        <div class="bg-slate-900 border border-slate-700 p-8 rounded-2xl shadow-2xl w-[400px] modal-enter" onclick="event.stopPropagation()">
+            <h2 id="modalTitle" class="text-xl font-black text-cyan-400 mb-6 uppercase italic tracking-tighter">Adjust Effect</h2>
+            <div id="modalContent" class="space-y-8"></div>
+            <div class="flex gap-3 mt-8">
+                <button onclick="closeModal()" class="flex-1 px-4 py-3 bg-slate-800 hover:bg-slate-700 rounded-lg font-bold text-xs uppercase tracking-widest transition text-slate-400">Cancel</button>
+                <button id="applyBtn" class="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold text-xs uppercase tracking-widest text-white shadow-lg shadow-blue-900/40 transition">Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto">
+        <header class="flex flex-col md:flex-row justify-between items-end mb-10 gap-6">
+            <div class="space-y-1">
+                <h1 class="text-4xl font-black tracking-tighter italic bg-gradient-to-br from-white to-slate-500 bg-clip-text text-transparent uppercase">Databender</h1>
+                <p class="text-xs text-blue-500 font-mono tracking-widest uppercase font-bold">Intro to Media | Visual Sonification</p>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Glitch by Text Link -->
+                <a href="/textbender.html" class="bg-slate-900 hover:bg-slate-800 text-cyan-500 px-5 py-3 rounded-xl text-[10px] font-black transition-all border border-slate-800 uppercase tracking-[0.2em] flex items-center gap-2 group">
+                    <span class="w-2 h-2 bg-cyan-500 rounded-full group-hover:animate-pulse"></span>
+                    Glitch by Text
+                </a>
+
+                <input type="file" id="fileInput" class="hidden">
+                <input type="file" id="specialFileInput" class="hidden" accept="image/png, image/jpeg">
+                
+                <div class="btn-group-load">
+                    <button onclick="document.getElementById('fileInput').click()" class="bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 btn-main text-xs font-black transition-all border border-slate-700 uppercase tracking-widest">Load Source</button>
+                    <button onclick="toggleLoadMenu()" class="bg-slate-800 hover:bg-slate-700 text-white py-3 btn-split text-xs font-black transition-all border border-slate-700 uppercase">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="loadMenu" class="dropdown-menu hidden">
+                        <button onclick="triggerSpecialLoad('bmp')" class="w-full text-left px-4 py-3 text-[10px] font-bold text-slate-300 hover:bg-slate-700 hover:text-white rounded-lg transition uppercase tracking-widest">Load PNG/JPG as BMP</button>
+                        <button onclick="triggerSpecialLoad('planar')" class="w-full text-left px-4 py-3 text-[10px] font-bold text-slate-300 hover:bg-slate-700 hover:text-white rounded-lg transition uppercase tracking-widest">Load PNG/JPG as Planar</button>
+                    </div>
+                </div>
+
+                <button onclick="saveFile()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl text-xs font-black transition-all shadow-xl shadow-blue-900/20 uppercase tracking-widest">Export Result</button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div id="editorControls" class="lg:col-span-3 space-y-6 opacity-30 pointer-events-none transition-all duration-700">
+                
+                <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 backdrop-blur-xl">
+                    <h3 class="text-[10px] font-bold text-slate-500 uppercase mb-4 tracking-widest">Decoder Settings</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-[9px] text-slate-500 uppercase font-bold mb-1 block">Pixel Mapping</label>
+                            <select id="renderMode" onchange="updateAfterEdit()" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-xs text-slate-200 outline-none focus:border-blue-500 transition">
+                                <option value="interleaved">Interleaved (RGB)</option>
+                                <option value="planar">Planar (RRR GGG BBB)</option>
+                                <option value="native">System Native</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 font-mono text-[10px]">
+                            <div>
+                                <label class="text-slate-500 mb-1 block">Width</label>
+                                <input type="number" id="imgWidth" value="512" onchange="updateAfterEdit()" class="w-full bg-slate-950 p-2 rounded border border-slate-800 focus:border-blue-500 transition">
+                            </div>
+                            <div>
+                                <label class="text-slate-500 mb-1 block">Offset</label>
+                                <input type="number" id="imgOffset" value="54" onchange="updateAfterEdit()" class="w-full bg-slate-950 p-2 rounded border border-slate-800 focus:border-blue-500 transition">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
+                    <h3 class="text-[10px] font-bold text-slate-500 uppercase mb-4 tracking-widest">Sonification Tools</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="applyFilter('invert')" class="filter-btn">Invert</button>
+                        <button onclick="applyFilter('reverse')" class="filter-btn">Reverse</button>
+                        <button onclick="requestEffect('amplify')" class="filter-btn">Amplify</button>
+                        <button onclick="requestEffect('bitcrush')" class="filter-btn">Crush</button>
+                        <button onclick="requestEffect('bass')" class="filter-btn text-blue-400">Bass</button>
+                        <button onclick="requestEffect('treble')" class="filter-btn text-blue-300">Treble</button>
+                        <button onclick="requestEffect('highpass')" class="filter-btn text-cyan-400">Highpass</button>
+                        <button onclick="requestEffect('lowpass')" class="filter-btn text-emerald-400">Lowpass</button>
+                        <button onclick="requestEffect('wahwah')" class="filter-btn text-purple-400">Wahwah</button>
+                        <button onclick="requestEffect('compress')" class="filter-btn text-red-400">Compress</button>
+                        <button onclick="requestEffect('echo')" class="filter-btn text-orange-400">Echo</button>
+                        <button onclick="requestEffect('dc_offset')" class="filter-btn">Shift</button>
+                        <button onclick="applyFilter('fadein')" class="filter-btn">Fade In</button>
+                        <button onclick="applyFilter('fadeout')" class="filter-btn">Fade Out</button>
+                    </div>
+                    <button onclick="undo()" id="undoBtn" disabled class="w-full mt-4 bg-slate-950 text-slate-500 border border-slate-800 p-3 rounded-lg text-[9px] font-bold disabled:opacity-10 uppercase tracking-widest transition">Undo</button>
+                </div>
+
+                <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
+                    <div class="flex justify-between items-center mb-4">
+                        <span id="audioStatus" class="text-[9px] font-mono text-slate-600 uppercase">Monitor: Off</span>
+                        <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.2" class="w-20 accent-blue-500" oninput="updateVolume(this.value)">
+                    </div>
+                    <button id="audioBtn" onclick="toggleAudio()" class="w-full bg-slate-950 hover:bg-slate-900 text-blue-400 p-3 rounded-lg text-[10px] font-black border border-slate-800 transition-all uppercase tracking-widest">Toggle Audio Loop</button>
+                </div>
+            </div>
+
+            <div class="lg:col-span-9 space-y-8">
+                <div class="bg-slate-900/50 p-6 rounded-3xl border border-slate-800 shadow-2xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-[10px] font-mono text-slate-400 uppercase tracking-widest">Buffer Stream / <span id="selRange" class="text-blue-500">0 - 0</span></span>
+                        <span id="fileInfoDisplay" class="text-[10px] font-mono text-slate-600 uppercase">Waiting...</span>
+                    </div>
+                    <div class="canvas-container" id="canvasContainer">
+                        <canvas id="waveformCanvas"></canvas>
+                        <div id="selectionOverlay" class="selection-overlay hidden"></div>
+                    </div>
+                    <div class="flex justify-between mt-4 px-2 text-[9px] font-black uppercase tracking-[0.2em]">
+                        <span class="text-red-500/30">Phase One</span>
+                        <span class="text-green-500/30">Phase Two</span>
+                        <span class="text-blue-500/30">Phase Three</span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/50 p-2 rounded-3xl border border-slate-800 min-h-[500px] flex flex-col shadow-2xl">
+                    <div class="flex-grow flex items-center justify-center rounded-[20px] overflow-auto bg-black/40 relative custom-scrollbar">
+                        <p id="dropZoneText" class="text-slate-800 uppercase font-black text-4xl italic tracking-tighter opacity-20">No Data</p>
+                        <canvas id="rawPreviewCanvas" class="hidden"></canvas>
+                        <img id="nativePreview" class="hidden max-w-full shadow-2xl">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-8 py-3 rounded-full shadow-2xl opacity-0 transition-all duration-300 pointer-events-none z-[200] font-bold text-xs uppercase tracking-widest border border-blue-400"></div>
+
+    <script>
+        let currentBuffer = null;
+        let history = [];
+        let fileName = '';
+        let isDragging = false;
+        let startX = 0;
+        let selectionStart = 0;
+        let selectionEnd = 0;
+        let audioCtx = null, audioSource = null, gainNode = null;
+        let isModalActive = false;
+        let currentSpecialMode = null;
+        let currentNativeBlobUrl = null;
+        const SR = 44100;
+
+        const el = id => document.getElementById(id);
+        const waveCanvas = el('waveformCanvas'), waveCtx = waveCanvas.getContext('2d');
+        const rawCanvas = el('rawPreviewCanvas'), rawCtx = rawCanvas.getContext('2d');
+        const container = el('canvasContainer'), overlay = el('selectionOverlay');
+
+        function toggleLoadMenu() { el('loadMenu').classList.toggle('hidden'); }
+        window.onclick = (e) => { if(!e.target.closest('.btn-group-load')) el('loadMenu').classList.add('hidden'); }
+
+        function triggerSpecialLoad(mode) {
+            currentSpecialMode = mode;
+            el('specialFileInput').click();
+            el('loadMenu').classList.add('hidden');
+        }
+
+        function resize() {
+            waveCanvas.width = container.clientWidth;
+            waveCanvas.height = container.clientHeight;
+            if (currentBuffer) drawWaveform();
+        }
+        window.onresize = resize; resize();
+
+        el('fileInput').onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            fileName = file.name;
+            processRawBuffer(await file.arrayBuffer());
+        };
+
+        el('specialFileInput').onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            fileName = file.name;
+            const img = new Image();
+            img.src = URL.createObjectURL(file);
+            img.onload = () => {
+                const helperCanvas = document.createElement('canvas');
+                const hctx = helperCanvas.getContext('2d');
+                helperCanvas.width = img.width;
+                helperCanvas.height = img.height;
+                hctx.drawImage(img, 0, 0);
+                const imageData = hctx.getImageData(0, 0, img.width, img.height).data;
+                el('imgWidth').value = img.width;
+
+                if (currentSpecialMode === 'bmp') {
+                    el('renderMode').value = 'interleaved';
+                    el('imgOffset').value = 54;
+                    const rowSize = Math.ceil((img.width * 3) / 4) * 4;
+                    const dataSize = rowSize * img.height;
+                    const buffer = new Uint8Array(54 + dataSize);
+                    const view = new DataView(buffer.buffer);
+                    view.setUint16(0, 0x4D42, false);
+                    view.setUint32(2, 54 + dataSize, true);
+                    view.setUint32(10, 54, true);
+                    view.setUint32(14, 40, true);
+                    view.setUint32(18, img.width, true);
+                    view.setUint32(22, img.height, true);
+                    view.setUint16(26, 1, true);
+                    view.setUint16(28, 24, true);
+                    for (let y = 0; y < img.height; y++) {
+                        const rowOffset = 54 + (img.height - 1 - y) * rowSize;
+                        for (let x = 0; x < img.width; x++) {
+                            const px = (y * img.width + x) * 4;
+                            const bx = rowOffset + x * 3;
+                            buffer[bx] = imageData[px + 2];
+                            buffer[bx + 1] = imageData[px + 1];
+                            buffer[bx + 2] = imageData[px];
+                        }
+                    }
+                    processRawBuffer(buffer.buffer);
+                } else if (currentSpecialMode === 'planar') {
+                    el('renderMode').value = 'planar';
+                    el('imgOffset').value = 0;
+                    const size = img.width * img.height;
+                    const buffer = new Uint8Array(size * 3);
+                    for (let i = 0; i < size; i++) {
+                        buffer[i] = imageData[i * 4];
+                        buffer[size + i] = imageData[i * 4 + 1];
+                        buffer[size * 2 + i] = imageData[i * 4 + 2];
+                    }
+                    processRawBuffer(buffer.buffer);
+                }
+            };
+        };
+
+        function processRawBuffer(arrayBuffer) {
+            el('fileInfoDisplay').innerText = fileName.toUpperCase();
+            currentBuffer = new Uint8Array(arrayBuffer);
+            history = [];
+            el('editorControls').style.opacity = '1';
+            el('editorControls').style.pointerEvents = 'auto';
+            el('dropZoneText').classList.add('hidden');
+            if (!currentSpecialMode) {
+                if (currentBuffer[0] === 0x42 && currentBuffer[1] === 0x4D) {
+                    const dv = new DataView(currentBuffer.buffer);
+                    const w = Math.abs(dv.getInt32(18, true));
+                    const off = dv.getInt32(10, true);
+                    el('imgWidth').value = w;
+                    el('imgOffset').value = off;
+                    el('renderMode').value = 'interleaved';
+                } else {
+                    el('imgOffset').value = 0;
+                    el('renderMode').value = 'planar';
+                    el('imgWidth').value = Math.floor(Math.sqrt(currentBuffer.length / 3));
+                }
+            }
+            selectionStart = 0; selectionEnd = currentBuffer.length;
+            currentSpecialMode = null;
+            updateAfterEdit();
+            showToast("Buffer Synchronized");
+        }
+
+        function updateAfterEdit() {
+            if (!currentBuffer || isModalActive) return;
+            const mode = el('renderMode').value;
+            const offset = parseInt(el('imgOffset').value) || 0;
+            const width = parseInt(el('imgWidth').value) || 512;
+
+            if (mode === 'native') {
+                rawCanvas.classList.add('hidden');
+                el('nativePreview').classList.remove('hidden');
+                
+                // Cleanup old blob
+                if(currentNativeBlobUrl) URL.revokeObjectURL(currentNativeBlobUrl);
+                
+                const blob = new Blob([currentBuffer]);
+                currentNativeBlobUrl = URL.createObjectURL(blob);
+                el('nativePreview').src = currentNativeBlobUrl;
+            } else {
+                el('nativePreview').classList.add('hidden');
+                rawCanvas.classList.remove('hidden');
+                renderManual(mode, offset, width);
+            }
+            drawWaveform();
+            if (audioSource) { refreshAudio(); }
+        }
+
+        function renderManual(mode, offset, width) {
+            const data = currentBuffer.subarray(offset);
+            const bytesPerPixel = 3;
+            const rowStride = mode === 'interleaved' ? Math.ceil((width * bytesPerPixel) / 4) * 4 : width;
+            const planeSize = Math.floor(data.length / 3);
+            const totalPixels = mode === 'planar' ? planeSize : Math.floor(data.length / rowStride) * width;
+            const height = Math.floor(totalPixels / width);
+            if (height <= 0 || width <= 0) return;
+            rawCanvas.width = width; rawCanvas.height = height;
+            const imgData = rawCtx.createImageData(width, height);
+            const pixels = imgData.data;
+            for (let y = 0; y < height; y++) {
+                const canvasY = (height - 1 - y); 
+                for (let x = 0; x < width; x++) {
+                    const canvasIdx = (canvasY * width + x) * 4;
+                    if (mode === 'planar') {
+                        const i = y * width + x;
+                        pixels[canvasIdx] = data[i]; 
+                        pixels[canvasIdx + 1] = data[planeSize + i];
+                        pixels[canvasIdx + 2] = data[planeSize * 2 + i];
+                    } else {
+                        const bufferIdx = (y * rowStride) + (x * bytesPerPixel);
+                        pixels[canvasIdx] = data[bufferIdx + 2]; 
+                        pixels[canvasIdx + 1] = data[bufferIdx + 1];
+                        pixels[canvasIdx + 2] = data[bufferIdx];
+                    }
+                    pixels[canvasIdx + 3] = 255;
+                }
+            }
+            rawCtx.putImageData(imgData, 0, 0);
+        }
+
+        function drawWaveform() {
+            if (!currentBuffer) return;
+            waveCtx.clearRect(0, 0, waveCanvas.width, waveCanvas.height);
+            const w = waveCanvas.width, h = waveCanvas.height;
+            const step = Math.ceil(currentBuffer.length / w);
+            waveCtx.strokeStyle = '#3b82f6';
+            waveCtx.lineWidth = 1.5;
+            waveCtx.beginPath();
+            for(let x=0; x<w; x++) {
+                const val = currentBuffer[x * step] || 0;
+                const y = h - (val / 255) * h;
+                if (x === 0) waveCtx.moveTo(x, y); else waveCtx.lineTo(x, y);
+            }
+            waveCtx.stroke();
+        }
+
+        function applyFilter(type) {
+            saveHistory();
+            const start = selectionStart, end = selectionEnd || currentBuffer.length;
+            const chunk = currentBuffer.subarray(start, end);
+            if (type === 'invert') for(let i=0; i<chunk.length; i++) chunk[i] = 255 - chunk[i];
+            if (type === 'reverse') currentBuffer.set(new Uint8Array(chunk).reverse(), start);
+            if (type === 'fadein') for(let i=0; i<chunk.length; i++) chunk[i] *= (i / chunk.length);
+            if (type === 'fadeout') for(let i=0; i<chunk.length; i++) chunk[i] *= (1 - i / chunk.length);
+            updateAfterEdit();
+            showToast(type.toUpperCase());
+        }
+
+        function requestEffect(type) {
+            isModalActive = true; 
+            const modal = el('paramModal');
+            modal.classList.remove('hidden');
+            el('modalTitle').innerText = type;
+            const content = el('modalContent');
+            content.innerHTML = '';
+            const params = [];
+            if (type === 'amplify') params.push({id:'v', label:'Gain Ratio', min:0.1, max:10, step:'0.1', val:1.5});
+            if (type === 'bitcrush') params.push({id:'v', label:'Quantization', min:1, max:128, step:1, val:16});
+            if (type === 'bass' || type === 'treble') params.push({id:'v', label:'Intensity', min:0.1, max:100, step:'0.1', val:10});
+            if (type === 'highpass' || type === 'lowpass') params.push({id:'v', label:'Order', min:0.1, max:50, step:'0.1', val:5});
+            if (type === 'echo') {
+                params.push({id:'d', label:'Delay (ms)', min:0.01, max:1, step:'0.01', val:0.1});
+                params.push({id:'f', label:'Feedback', min:0, max:1, step:'0.01', val:0.5});
+            }
+            if (type === 'wahwah') params.push({id:'v', label:'Speed Rate', min:0.001, max:0.5, step:'0.001', val:0.05});
+            if (type === 'compress') {
+                params.push({id:'t', label:'Ceiling', min:0, max:255, step:1, val:180});
+                params.push({id:'r', label:'Squash', min:0.01, max:1, step:'0.01', val:0.3});
+            }
+            if (type === 'dc_offset') params.push({id:'v', label:'Lvl Offset', min:-255, max:255, step:1, val:30});
+            const state = {};
+            params.forEach(p => {
+                state[p.id] = p.val;
+                const wrapper = document.createElement('div');
+                wrapper.className = "space-y-3 p-4 bg-slate-950/50 rounded-xl border border-slate-800";
+                const header = document.createElement('div');
+                header.className = "flex justify-between items-center";
+                header.innerHTML = `<label class="text-[10px] uppercase font-black text-slate-400 tracking-widest">${p.label}</label>`;
+                const numInput = document.createElement('input');
+                numInput.type = 'number'; numInput.step = p.step; numInput.min = p.min; numInput.max = p.max; numInput.value = p.val;
+                numInput.className = "w-16 bg-slate-900 border border-slate-700 text-blue-500 font-mono text-xs font-bold px-1 py-0.5 rounded outline-none focus:border-blue-500";
+                header.appendChild(numInput);
+                const controlRow = document.createElement('div');
+                controlRow.className = "flex items-center gap-3";
+                const btnDown = document.createElement('button'); btnDown.className = "step-btn"; btnDown.innerText = "-";
+                const slider = document.createElement('input'); slider.type = 'range'; slider.min = p.min; slider.max = p.max; slider.step = p.step; slider.value = p.val;
+                slider.className = "flex-1 h-1.5 bg-slate-800 rounded-lg appearance-none accent-blue-500";
+                const btnUp = document.createElement('button'); btnUp.className = "step-btn"; btnUp.innerText = "+";
+                const syncAll = (newVal) => { const v = parseFloat(newVal); state[p.id] = v; slider.value = v; numInput.value = v; };
+                slider.oninput = (e) => { e.stopPropagation(); syncAll(e.target.value); };
+                numInput.oninput = (e) => { e.stopPropagation(); syncAll(e.target.value); };
+                btnDown.onclick = (e) => { e.stopPropagation(); const v = Math.max(parseFloat(p.min), parseFloat(state[p.id]) - 1); syncAll(v.toFixed(2)); };
+                btnUp.onclick = (e) => { e.stopPropagation(); const v = Math.min(parseFloat(p.max), parseFloat(state[p.id]) + 1); syncAll(v.toFixed(2)); };
+                slider.onmousedown = (e) => e.stopPropagation();
+                numInput.onmousedown = (e) => e.stopPropagation();
+                controlRow.appendChild(btnDown); controlRow.appendChild(slider); controlRow.appendChild(btnUp);
+                wrapper.appendChild(header); wrapper.appendChild(controlRow);
+                content.appendChild(wrapper);
+            });
+            el('applyBtn').onclick = (e) => {
+                e.stopPropagation();
+                saveHistory();
+                const start = selectionStart, end = selectionEnd || currentBuffer.length;
+                const chunk = currentBuffer.subarray(start, end);
+                if (type === 'amplify') { const v = state.v; for(let i=0; i<chunk.length; i++) chunk[i] = Math.min(255, chunk[i] * v); }
+                if (type === 'bitcrush') { const v = state.v; for(let i=0; i<chunk.length; i++) chunk[i] = Math.floor(chunk[i]/v)*v; }
+                if (type === 'bass') { const s = Math.max(1, Math.floor(state.v)); for(let i=s; i<chunk.length; i++) { let a=0; for(let j=0; j<s; j++) a+=chunk[i-j]; chunk[i]=a/s; } }
+                if (type === 'treble') { const s = state.v; for(let i=1; i<chunk.length; i++) chunk[i] = Math.max(0, Math.min(255, 127 + (chunk[i]-chunk[i-1])*s)); }
+                if (type === 'highpass') { const s = state.v; for(let i=1; i<chunk.length; i++) chunk[i] = Math.min(255, Math.abs(chunk[i]-chunk[i-1])*s); }
+                if (type === 'lowpass') { const s = Math.max(1, Math.floor(state.v)); for(let i=0; i<chunk.length-s; i++) { let a=0; for(let j=0; j<s; j++) a+=chunk[i+j]; chunk[i]=a/s; } }
+                if (type === 'echo') { const d = Math.floor(state.d*SR); const f = state.f; for(let i=d; i<chunk.length; i++) chunk[i] = Math.min(255, chunk[i] + chunk[i-d]*f); }
+                if (type === 'wahwah') { const f = state.v; for(let i=0; i<chunk.length; i++) chunk[i] = (chunk[i] * (Math.sin(i*f)*0.5+0.5)) % 256; }
+                if (type === 'compress') { const t = state.t, r = state.r; for(let i=0; i<chunk.length; i++) if(chunk[i]>t) chunk[i] = t + (chunk[i]-t)*r; }
+                if (type === 'dc_offset') { const v = state.v; for(let i=0; i<chunk.length; i++) chunk[i] = Math.max(0, Math.min(255, chunk[i]+v)); }
+                closeModal(); updateAfterEdit(); showToast("Processed " + type.toUpperCase());
+            };
+        }
+
+        function closeModal() { isModalActive = false; el('paramModal').classList.add('hidden'); }
+        function saveHistory() { history.push(new Uint8Array(currentBuffer)); el('undoBtn').disabled = false; el('undoBtn').classList.add('text-white'); }
+        function undo() { if(history.length) { currentBuffer = history.pop(); el('undoBtn').disabled = history.length===0; if(el('undoBtn').disabled) el('undoBtn').classList.remove('text-white'); updateAfterEdit(); } }
+        function toggleAudio() { audioSource ? stopAudio() : startAudio(); }
+        function startAudio() {
+            if(!currentBuffer) return;
+            if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const b = audioCtx.createBuffer(1, currentBuffer.length, SR);
+            const d = b.getChannelData(0);
+            for(let i=0; i<currentBuffer.length; i++) d[i] = (currentBuffer[i]/127.5)-1;
+            audioSource = audioCtx.createBufferSource(); audioSource.buffer = b; audioSource.loop = true;
+            gainNode = audioCtx.createGain(); gainNode.gain.value = el('volumeSlider').value;
+            audioSource.connect(gainNode); gainNode.connect(audioCtx.destination); audioSource.start();
+            el('audioBtn').innerText = "Stop Monitor Loop"; el('audioStatus').innerText = "Monitor: Live"; el('audioStatus').classList.add('text-blue-500');
+        }
+        function stopAudio() { if(audioSource) { try { audioSource.stop(); } catch(e){} audioSource = null; } el('audioBtn').innerText = "Toggle Audio Loop"; el('audioStatus').innerText = "Monitor: Off"; el('audioStatus').classList.remove('text-blue-500'); }
+        function refreshAudio() {
+            if (!audioSource || !audioCtx || isModalActive) return;
+            const b = audioCtx.createBuffer(1, currentBuffer.length, SR);
+            const d = b.getChannelData(0);
+            for(let i=0; i<currentBuffer.length; i++) d[i] = (currentBuffer[i]/127.5)-1;
+            if (audioSource.buffer) audioSource.buffer = b;
+        }
+        function updateVolume(val) { if(gainNode) gainNode.gain.value = val; }
+        container.onmousedown = (e) => { if (isModalActive) return; isDragging = true; const rect = container.getBoundingClientRect(); startX = e.clientX - rect.left; overlay.classList.remove('hidden'); };
+        window.onmousemove = (e) => { if(!isDragging) return; const rect = container.getBoundingClientRect(); const x = Math.max(0, Math.min(e.clientX - rect.left, waveCanvas.width)); const left = Math.min(startX, x), width = Math.abs(startX - x); overlay.style.left = left+'px'; overlay.style.width = width+'px'; selectionStart = Math.floor((left/waveCanvas.width)*currentBuffer.length); selectionEnd = Math.floor(((left+width)/waveCanvas.width)*currentBuffer.length); el('selRange').innerText = `${selectionStart} - ${selectionEnd}`; };
+        window.onmouseup = () => { isDragging = false; };
+
+        // Updated for CSP Compliance
+        function saveFile() {
+            if (!currentBuffer) return;
+            const mode = el('renderMode').value;
+            const name = "bent_" + (fileName.split('.')[0] || "image") + ".png";
+
+            if (mode === 'native' && currentNativeBlobUrl) {
+                // Use the existing Blob URL we already created for the preview
+                const a = document.createElement('a');
+                a.href = currentNativeBlobUrl;
+                a.download = "native_" + name;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            } else {
+                // Convert Canvas to Blob (favored over data: URIs by CSP)
+                rawCanvas.toBlob((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = name;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    // Revoke later to allow download to start
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
+                }, 'image/png');
+            }
+        }
+
+        function showToast(m) { const t = el('toast'); t.innerText = m; t.classList.remove('opacity-0'); t.classList.add('bottom-12'); setTimeout(() => { t.classList.add('opacity-0'); t.classList.remove('bottom-12'); }, 2000); }
+    </script>
+</body>
+</html>
