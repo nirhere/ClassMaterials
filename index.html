@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intro to Media | Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            background-color: #020617; 
+            color: #f8fafc; 
+            font-family: 'JetBrains Mono', 'Fira Code', monospace; 
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .scanline {
+            width: 100%;
+            height: 2px;
+            background: rgba(34, 211, 238, 0.1);
+            position: absolute;
+            z-index: 10;
+            top: 0;
+            pointer-events: none;
+            animation: scan 4s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: 0%; }
+            100% { top: 100%; }
+        }
+
+        .glitch-card {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glitch-card:hover {
+            border-color: #0891b2;
+            transform: translateY(-5px);
+            box-shadow: 0 0 30px rgba(8, 145, 178, 0.2);
+        }
+
+        .glitch-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                120deg,
+                transparent,
+                rgba(34, 211, 238, 0.05),
+                transparent
+            );
+            transition: 0.5s;
+        }
+
+        .glitch-card:hover::before {
+            left: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="scanline"></div>
+
+    <div class="max-w-4xl w-full px-6 text-center">
+        <header class="mb-16">
+            <h1 class="text-6xl md:text-8xl font-black tracking-tighter uppercase italic">
+                Intro to <span class="text-cyan-400">Media</span>
+            </h1>
+            <div class="h-1 w-24 bg-cyan-500 mx-auto mt-4"></div>
+            <p class="mt-8 text-slate-500 text-sm uppercase tracking-[0.5em] font-bold">Laboratory of Digital Deconstruction</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Text Bender Link -->
+            <a href="https://nirhere.github.io/textbender.html" class="glitch-card p-10 rounded-2xl group text-left">
+                <div class="flex justify-between items-start mb-4">
+                    <span class="text-cyan-500 font-bold text-xs uppercase tracking-widest">Image Manipulation</span>
+                    <span class="text-slate-700 text-xs font-mono">v2.6</span>
+                </div>
+                <h2 class="text-3xl font-black uppercase italic mb-2 group-hover:text-cyan-400 transition-colors">Textbender</h2>
+                <p class="text-slate-400 text-sm leading-relaxed mb-8">
+                    Bend visual reality by injecting raw text and scrambling hex streams. For image glitching and data-moshing.
+                </p>
+                <div class="inline-flex items-center text-xs font-bold uppercase tracking-tighter text-cyan-500">
+                    Enter Terminal <span class="ml-2 group-hover:translate-x-2 transition-transform">→</span>
+                </div>
+            </a>
+
+            <!-- Data Bender Link -->
+            <a href="databend.html" class="glitch-card p-10 rounded-2xl group text-left">
+                <div class="flex justify-between items-start mb-4">
+                    <span class="text-indigo-500 font-bold text-xs uppercase tracking-widest">Audio Synthesis</span>
+                    <span class="text-slate-700 text-xs font-mono">BETA</span>
+                </div>
+                <h2 class="text-3xl font-black uppercase italic mb-2 group-hover:text-indigo-400 transition-colors">Databender</h2>
+                <p class="text-slate-400 text-sm leading-relaxed mb-8">
+                    Convert non-audio data into soundscapes. Explore the sonic textures of broken files and raw binary.
+                </p>
+                <div class="inline-flex items-center text-xs font-bold uppercase tracking-tighter text-indigo-500">
+                    Load Processor <span class="ml-2 group-hover:translate-x-2 transition-transform">→</span>
+                </div>
+            </a>
+        </div>
+
+        <footer class="mt-20">
+            <p class="text-[10px] text-slate-700 uppercase tracking-widest font-bold">
+                Experimental Media Arts // Academic Use Only
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
